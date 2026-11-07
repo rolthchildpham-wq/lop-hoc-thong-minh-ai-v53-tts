@@ -459,8 +459,19 @@ window.FIREBASE_CONFIG = {
 
   function systemSpeakAsync(text,opts={}){
     return new Promise(resolve=>{
+      const locale=opts.lang||'vi-VN', key=langKey(locale), cleanText=clean(text);
+      // Prefer the bundled Sherpa-ONNX native voice for English and Mandarin.
+      if(window.AndroidVoice && (key==='en'||key==='zh')){
+        try{
+          window.AndroidVoice.speak(cleanText,locale);
+          if(opts.onstart)opts.onstart();
+          const delay=Math.max(900,Math.ceil(cleanText.length*68/Math.max(.6,opts.rate||1)));
+          setTimeout(()=>{if(opts.onend)opts.onend();resolve(true);},delay);
+          return;
+        }catch(nativeError){console.warn('Native offline TTS failed; falling back to Web Speech',nativeError);}
+      }
       if(!('speechSynthesis' in window)){resolve(false);return;}
-      const locale=opts.lang||'vi-VN', key=langKey(locale), u=new SpeechSynthesisUtterance(clean(text));
+      const u=new SpeechSynthesisUtterance(cleanText);
       u.lang=locale; u.rate=opts.rate||1; u.pitch=opts.pitch||1;
       const v=state.selected[key]; if(v)u.voice=v;
       u.onstart=()=>opts.onstart&&opts.onstart();
@@ -483,6 +494,7 @@ window.FIREBASE_CONFIG = {
   function cancelAll(){
     sequenceId++;
     if('speechSynthesis' in window) window.speechSynthesis.cancel();
+    if(window.AndroidVoice){try{window.AndroidVoice.cancel();}catch(e){}}
     if(window.KorvaVoice) window.KorvaVoice.cancel();
   }
 
