@@ -27,7 +27,8 @@ for (const file of [
 assert(html.includes('function setAppMode(') && html.includes('function switchTopic('), 'Learning mode/topic handlers missing');
 assert(html.includes('function nextQuestionManually(') && html.includes('function scorePoints('), 'Question navigation/answer handlers missing');
 assert(html.includes('Offline mode isolation') && html.includes('AndroidVoice.isOffline()'), 'Offline isolation guard missing');
-assert(html.includes('ai_offline_session_v535') && html.includes('offline-auto-start'), 'Offline resume/persistence missing');
+assert(html.includes("fbRole=''") && html.includes('Object.assign(englishDeckState,saved.englishDeck)'), 'Stale online-room reset or deck restore missing');
+assert(html.includes('ai_offline_session_v537') && html.includes('offline-auto-start'), 'Offline resume/persistence missing');
 assert(html.includes('DATA_BANK.english') && html.includes('DATA_BANK.chinese_hsk'), 'Language banks missing');
 assert(html.includes('grade5_math') && html.includes('grade5_viet') && html.includes('grade5_eng'), 'Grade 5 banks missing');
 console.log('PASS: ' + checked + ' inline scripts parsed; offline static assets, mode/topic navigation, answer flow and session restore verified.');
