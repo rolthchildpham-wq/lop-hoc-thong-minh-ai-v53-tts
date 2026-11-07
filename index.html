@@ -735,3 +735,58 @@ addMath('M6','Toán 5 • Tỉ số phần trăm',[
 ['Phần trăm còn lại.','Một bể đầy 75%, phần chưa đầy là:',['15%','20%','25%','35%'],2,'100%−75%=25%.'],
 ['Tìm số khi biết phần trăm.','25% của một số bằng 50. Số đó là:',['100','150','200','250'],2,'50:25%=200.'],
 ['Tỉ lệ hoàn thành.','Hoàn thành 42/50 công việc bằng:',['80%','82%','84%','86%'],2,'42:50=0,84=84%.'],
+]);
+window.GRADE5_MATH_BANK=math;
+})();
+</script>
+<script id="offline-local-runtime">
+(function(){
+'use strict';
+const $=id=>document.getElementById(id),KEY='lopAI_offline_v534';
+const read=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}};
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+let S=Object.assign({name:'Học viên 01',mode:'english',level:'A1',score:0,answered:0,correct:0},read()),pool=[],q=null,paused=false,num=0;
+const txt=(id,v)=>{const e=$(id);if(e)e.textContent=v==null?'':String(v)};
+function questions(){
+ let a=[];
+ if(S.mode==='english')a=(window.CEFR_ENGLISH_BANK||{})[S.level]||[];
+ if(S.mode==='chinese_hsk')a=(window.HSK_PRO_BANK||{})[Number(S.level)]||[];
+ if(S.mode==='grade5_math')a=(window.GRADE5_MATH_BANK||{})[S.level]||[];
+ return a.filter(x=>x&&(x.question||x.word||x.hanzi)&&x.options&&x.options.length);
+}
+function mix(a){a=a.slice();for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function render(){
+ if(!pool.length){pool=mix(questions());num=0}
+ if(!pool.length){txt('viPrompt','Không có dữ liệu cho mục này trong gói offline.');txt('phoneticHint','Chọn CEFR A1–C1, HSK 1–6 hoặc Toán 5.');return}
+ q=pool[num++%pool.length];let opts=q.options||[],ci=Number.isInteger(q.correct)?q.correct:opts.indexOf(q.answerText||q.answer||q.vi||q.word||q.hanzi);
+ txt('qMeta',S.level+' • Câu '+num);txt('situationTag',q.topic||q.type||q.activity||'Luyện tập offline');
+ txt('viPrompt',q.question||q.word||q.hanzi||'');txt('phoneticHint',[q.ipa,q.pinyin,q.vn,q.explain].filter(Boolean).join(' • ')||'Chọn đáp án đúng');
+ txt('grade5QText',q.question||'');txt('timerDisplay','∞');
+ const box=$('grade5OptsGrid');if(box){box.innerHTML='';opts.forEach((v,i)=>{const b=document.createElement('button');b.className='mini-opt';b.textContent=(i+1)+'. '+v;b.style.cssText='padding:8px;text-align:left;font-size:12px';b.onclick=()=>answer(i,ci,box);box.appendChild(b)})}
+ $('quizBoardBox')?.classList.add('active');if($('answerInput'))$('answerInput').value='';
+ scoreUI();
+}
+function answer(i,ci,box){if(!q)return;[...box.children].forEach((b,n)=>{b.disabled=true;b.style.background=n===ci?'#059669':n===i?'#b91c1c':'#ffffff18'});
+ S.answered++;if(i===ci){S.correct++;S.score+=10;txt('situationTag','✅ Chính xác! +10 điểm')}else txt('situationTag','❌ Chưa đúng. Đáp án: '+(q.options[ci]||q.answerText||''));
+ txt('phoneticHint',q.explain||'Tiếp tục luyện tập nhé!');save();scoreUI();
+ try{window.SmartSRS52?.record(q,i===ci)}catch(e){}
+}
+function scoreUI(){let strip=document.querySelector('.status-strip');if(strip){let e=$('offlineScore');if(!e){e=document.createElement('span');e.id='offlineScore';strip.appendChild(e)}e.textContent='📴 '+S.name+' • '+S.score+' điểm • '+S.correct+'/'+S.answered+' đúng'}}
+function setMode(mode,level){S.mode=mode;S.level=String(level);save();window.appMode=mode;window.currentSubCategory=level;
+ txt('appHeaderTitle',mode==='english'?'🇬🇧 LỚP AI • TIẾNG ANH GIAO TIẾP':mode==='chinese_hsk'?'🇨🇳 LỚP AI • TIẾNG TRUNG HSK':'📐 LỚP AI • TOÁN LỚP 5');
+ const bar=$('topicBar');if(bar){bar.innerHTML='';let a=mode==='english'?['A1','A2','B1','B2','C1']:mode==='chinese_hsk'?['1','2','3','4','5','6']:['M1','M2','M3','M4','M5','M6'];a.forEach(v=>{let b=document.createElement('button');b.className='topic-btn'+(v===String(level)?' active':'');b.textContent=mode==='chinese_hsk'?'HSK '+v:v;b.onclick=()=>setMode(mode,v);bar.appendChild(b)})}
+ $('langModal')?.classList.remove('open');$('setupModal')?.classList.remove('open');pool=[];render()}
+function startSoloMode(){S.name=$('userNameInput')?.value?.trim()||S.name;save();$('setupModal')?.classList.remove('open');setMode(S.mode||'english',S.level||'A1')}
+function changeModeAndSync(m,l){setMode(m,l)}
+function showProgramModal(){$('langModal')?.classList.add('open')}
+function nextQuestionManually(){if(!paused)render()}
+function submitTypedAnswer(){const v=$('answerInput')?.value?.trim().toLowerCase();if(!v||!q)return;let i=q.options.findIndex(x=>String(x).trim().toLowerCase()===v);if(i>=0)answer(i,Number.isInteger(q.correct)?q.correct:q.options.indexOf(q.answerText||q.answer||q.vi||q.word||q.hanzi),$('grade5OptsGrid'));else txt('situationTag','Không khớp. Hãy chọn một đáp án bên trên.')}
+function speakCurrentInfo(){if(q&&window.MultiVoiceManager)window.MultiVoiceManager.speak(q.word||q.hanzi||q.question,{lang:S.mode==='chinese_hsk'?'zh-CN':S.mode==='english'?'en-US':'vi-VN'})}
+function openLearningHub(t){window.LearningHub?.open(t||'path')}
+function togglePauseGame(){paused=!paused;txt('pauseBtn',paused?'▶️ Tiếp tục':'⏸️ Tạm Dừng')}
+window.startSoloMode=startSoloMode;window.showProgramModal=showProgramModal;window.changeModeAndSync=changeModeAndSync;window.switchTopic=l=>setMode(S.mode,l);window.nextQuestionManually=nextQuestionManually;window.submitTypedAnswer=submitTypedAnswer;window.speakCurrentInfo=speakCurrentInfo;window.togglePauseGame=togglePauseGame;window.openLearningHub=openLearningHub;window.openMultiplayerSetup=()=>alert('Tạo phòng cần ONLINE. OFFLINE học độc lập trên thiết bị.');window.joinRoom=()=>alert('Tham gia phòng cần ONLINE.');window.rejoinLastRoom=window.joinRoom;window.closeProgramModal=()=> $('langModal')?.classList.remove('open');
+document.addEventListener('DOMContentLoaded',()=>{if($('answerInput'))$('answerInput').addEventListener('keydown',e=>{if(e.key==='Enter')submitTypedAnswer()});if($('userNameInput'))$('userNameInput').value=S.name;startSoloMode()});
+})();
+</script>
+</body>
+</html>
