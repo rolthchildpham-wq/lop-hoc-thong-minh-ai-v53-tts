@@ -94,7 +94,7 @@ public final class NeuralTtsManager {
 
         OfflineTtsModelConfig model = new OfflineTtsModelConfig();
         model.setVits(vits);
-        model.setNumThreads(2);
+        model.setNumThreads(1);
         model.setDebug(false);
         model.setProvider("cpu");
 
@@ -193,6 +193,16 @@ public final class NeuralTtsManager {
             try { t.stop(); } catch (Exception ignored) {}
             try { t.release(); } catch (Exception ignored) {}
         }
+    }
+
+    public void trimMemory() {
+        cancel();
+        executor.execute(() -> {
+            try { if (englishTts != null) englishTts.release(); } catch (Throwable ignored) {}
+            try { if (chineseTts != null) chineseTts.release(); } catch (Throwable ignored) {}
+            englishTts = null;
+            chineseTts = null;
+        });
     }
 
     public void release() {
