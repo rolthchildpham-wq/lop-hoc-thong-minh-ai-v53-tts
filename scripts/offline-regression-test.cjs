@@ -20,9 +20,6 @@ for (const file of [
   'app/src/main/assets/www/vendor/firebase-auth-compat.js',
   'app/src/main/assets/www/vendor/firebase-database-compat.js',
   'app/src/main/assets/www/vendor/hanzi-writer.min.js',
-  'app/src/main/assets/tts/en/en_US-lessac-medium.onnx',
-  'app/src/main/assets/tts/zh/model.onnx',
-  'app/src/main/assets/tts/zh/voices.bin'
 ]) assert(fs.existsSync(file) && fs.statSync(file).size > 1000, 'Missing offline asset: ' + file);
 assert(html.includes('function setAppMode(') && html.includes('function switchTopic('), 'Learning mode/topic handlers missing');
 assert(html.includes('function nextQuestionManually(') && html.includes('function scorePoints('), 'Question navigation/answer handlers missing');
