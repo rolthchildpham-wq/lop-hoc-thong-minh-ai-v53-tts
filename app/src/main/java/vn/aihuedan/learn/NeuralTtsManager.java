@@ -80,6 +80,11 @@ public final class NeuralTtsManager {
 
     private synchronized OfflineTts getEnglishTts() {
         if (englishTts != null) return englishTts;
+        // Keep only one large ONNX engine resident to avoid Android low-memory kills.
+        if (chineseTts != null) {
+            try { chineseTts.release(); } catch (Throwable ignored) {}
+            chineseTts = null;
+        }
 
         OfflineTtsVitsModelConfig vits = new OfflineTtsVitsModelConfig();
         vits.setModel("tts/en/en_US-lessac-medium.onnx");
@@ -103,6 +108,11 @@ public final class NeuralTtsManager {
 
     private synchronized OfflineTts getChineseTts() {
         if (chineseTts != null) return chineseTts;
+        // Kokoro and Piper are never kept in RAM together on phones.
+        if (englishTts != null) {
+            try { englishTts.release(); } catch (Throwable ignored) {}
+            englishTts = null;
+        }
 
         OfflineTtsKokoroModelConfig kokoro = new OfflineTtsKokoroModelConfig();
         kokoro.setModel("tts/zh/model.onnx");
@@ -114,7 +124,7 @@ public final class NeuralTtsManager {
 
         OfflineTtsModelConfig model = new OfflineTtsModelConfig();
         model.setKokoro(kokoro);
-        model.setNumThreads(4);
+        model.setNumThreads(2);
         model.setDebug(false);
         model.setProvider("cpu");
 
