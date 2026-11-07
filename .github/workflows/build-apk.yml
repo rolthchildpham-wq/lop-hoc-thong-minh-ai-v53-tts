@@ -53,9 +53,6 @@ jobs:
           npx playwright install --with-deps chromium
           node scripts/test-offline-browser.cjs
 
-      - name: Offline app regression tests
-        run: node scripts/offline-regression-test.cjs
-
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
@@ -136,6 +133,9 @@ jobs:
           test -s app/src/main/assets/tts/en/en_US-lessac-medium.onnx
           test -s app/src/main/assets/tts/zh/model.onnx
           test -s app/src/main/assets/tts/zh/voices.bin
+
+      - name: Offline app regression tests
+        run: node scripts/offline-regression-test.cjs
 
       - name: Build V5.3.8 debug APK
         run: gradle :app:assembleDebug --stacktrace
