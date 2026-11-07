@@ -6,7 +6,7 @@ const { pathToFileURL } = require('url');
   const browser = await chromium.launch({ headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const page = await browser.newPage();
   const errors = [];
-  page.on('pageerror', e => errors.push('pageerror: ' + e.message));
+  page.on('pageerror', e => errors.push('pageerror: ' + (e.stack || e.message)));
   page.on('console', msg => { if (msg.type() === 'error' && !/ERR_INTERNET_DISCONNECTED|Failed to load resource/i.test(msg.text())) errors.push('console: ' + msg.text()); });
   await page.addInitScript(() => {
     window.AndroidVoice = {
