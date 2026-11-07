@@ -1,0 +1,3 @@
+Lop Hoc Thong Minh AI Android V5.3.3
+Sherpa-ONNX 2.0.1
+Offline voices: English Piper en_US-lessac-medium; Mandarin Kokoro multilingual.
