@@ -17,6 +17,7 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.Voice;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Gravity;
 import android.view.WindowInsets;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -28,6 +29,9 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.Toast;
+import android.widget.TextView;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 
 import java.util.Locale;
 import java.util.Set;
@@ -40,6 +44,10 @@ public class MainActivity extends Activity {
 
     private FrameLayout root;
     private WebView webView;
+    private TextView modeButton;
+    private boolean offlineMode = true;
+    private static final String PREFS = "app_mode";
+    private static final String KEY_OFFLINE = "offline";
     private PermissionRequest pendingWebPermission;
     private TextToSpeech tts;
     private volatile boolean ttsReady = false;
@@ -61,6 +69,8 @@ public class MainActivity extends Activity {
         root = new FrameLayout(this);
         webView = new WebView(this);
         root.addView(webView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        offlineMode = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_OFFLINE, true);
+        createModeButton();
         setContentView(root);
 
         applySystemBarInsets();
@@ -68,7 +78,55 @@ public class MainActivity extends Activity {
         initTts();
         configureWebView();
 
-        if (isOnline()) webView.loadUrl(LIVE_URL); else webView.loadUrl(OFFLINE_URL);
+        loadSelectedMode();
+    }
+
+
+    private int dp(float value) { return (int)(value * getResources().getDisplayMetrics().density + 0.5f); }
+
+    private GradientDrawable modeBackground() {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0xE6222938); bg.setCornerRadius(dp(22)); bg.setStroke(dp(1), 0xFFFFD166);
+        return bg;
+    }
+
+    private void createModeButton() {
+        modeButton = new TextView(this);
+        modeButton.setTextSize(12); modeButton.setTextColor(Color.WHITE);
+        modeButton.setTypeface(null, android.graphics.Typeface.BOLD);
+        modeButton.setPadding(dp(13), dp(9), dp(13), dp(9));
+        modeButton.setElevation(dp(8)); modeButton.setGravity(Gravity.CENTER);
+        modeButton.setOnClickListener(v -> {
+            offlineMode = !offlineMode;
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OFFLINE, offlineMode).apply();
+            updateModeButton(); loadSelectedMode();
+        });
+        FrameLayout.LayoutParams p = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.END);
+        p.setMargins(0, dp(34), dp(10), 0); root.addView(modeButton, p); updateModeButton();
+    }
+
+    private void updateModeButton() {
+        if (modeButton == null) return;
+        modeButton.setText(offlineMode ? "📴 OFFLINE" : "🌐 ONLINE");
+        modeButton.setBackground(modeBackground());
+        modeButton.setContentDescription(offlineMode ? "Đang dùng offline, chạm để chuyển online" : "Đang dùng online, chạm để chuyển offline");
+    }
+
+    private void loadSelectedMode() {
+        if (webView == null) return;
+        webView.stopLoading();
+        if (offlineMode) {
+            webView.loadUrl("file:///android_asset/www/index.html");
+            Toast.makeText(this, "Đã chuyển sang chế độ OFFLINE", Toast.LENGTH_SHORT).show();
+        } else if (isOnline()) {
+            webView.loadUrl(LIVE_URL);
+            Toast.makeText(this, "Đang mở phiên bản ONLINE", Toast.LENGTH_SHORT).show();
+        } else {
+            offlineMode = true;
+            getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OFFLINE, true).apply();
+            updateModeButton(); webView.loadUrl("file:///android_asset/www/index.html");
+            Toast.makeText(this, "Không có Internet — tiếp tục dùng OFFLINE", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void applySystemBarInsets() {
@@ -86,6 +144,11 @@ public class MainActivity extends Activity {
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) webView.getLayoutParams();
             lp.setMargins(left, top, right, bottom);
             webView.setLayoutParams(lp);
+            if (modeButton != null) {
+                FrameLayout.LayoutParams bp = (FrameLayout.LayoutParams) modeButton.getLayoutParams();
+                bp.setMargins(0, top + dp(8), right + dp(10), 0);
+                modeButton.setLayoutParams(bp);
+            }
             return insets;
         });
         root.requestApplyInsets();
@@ -127,9 +190,12 @@ public class MainActivity extends Activity {
             }
 
             @Override public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
-                if (req.isForMainFrame() && !OFFLINE_URL.equals(view.getUrl())) {
+                if (req.isForMainFrame() && !offlineMode && !view.getUrl().startsWith("file:///android_asset/")) {
                     Toast.makeText(MainActivity.this, "Mất mạng — chuyển sang trang offline", Toast.LENGTH_SHORT).show();
-                    view.loadUrl(OFFLINE_URL);
+                    offlineMode = true;
+                    getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OFFLINE, true).apply();
+                    updateModeButton();
+                    view.loadUrl("file:///android_asset/www/index.html");
                 }
             }
         });
