@@ -260,8 +260,9 @@ public class MainActivity extends Activity {
 
         // Kokoro Chinese is a large model (~325 MB on disk). On phones with limited
         // RAM, use the installed offline Android voice instead of risking process death.
-        boolean allowNeural = neuralTts != null && neuralTts.supports(l);
-        if (l.startsWith("zh") && !isMemorySafeForKokoro()) allowNeural = false;
+        // Keep WebView responsive: only run the bundled ONNX engine on devices
+        // with enough physical RAM and Android heap. Otherwise use offline Android TTS.
+        boolean allowNeural = neuralTts != null && neuralTts.supports(l) && isMemorySafeForNeuralTts();
         if (allowNeural) {
             neuralTts.speak(text, l,
                     () -> { },
@@ -273,13 +274,13 @@ public class MainActivity extends Activity {
     }
 
 
-    private boolean isMemorySafeForKokoro() {
+    private boolean isMemorySafeForNeuralTts() {
         try {
             ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-            if (am == null || am.isLowRamDevice() || am.getLargeMemoryClass() < 384) return false;
+            if (am == null || am.isLowRamDevice() || am.getLargeMemoryClass() < 512) return false;
             ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
             am.getMemoryInfo(info);
-            return info.totalMem >= 6L * 1024L * 1024L * 1024L;
+            return info.totalMem >= 8L * 1024L * 1024L * 1024L;
         } catch (Throwable ignored) { return false; }
     }
 
