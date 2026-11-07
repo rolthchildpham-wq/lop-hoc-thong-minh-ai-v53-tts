@@ -1,0 +1,123 @@
+name: Build Android V5.3.3 Offline TTS APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout V5.3.3 source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euxo pipefail
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(command -v sdkmanager)"; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Download Sherpa-ONNX Android runtime
+        shell: bash
+        run: |
+          set -euxo pipefail
+          mkdir -p app/libs
+          curl --fail --location --retry 4 --retry-all-errors \
+            https://github.com/k2-fsa/sherpa-onnx/releases/download/v2.0.1/sherpa-onnx-2.0.1.aar \
+            --output app/libs/sherpa-onnx-2.0.1.aar
+          test -s app/libs/sherpa-onnx-2.0.1.aar
+          unzip -t app/libs/sherpa-onnx-2.0.1.aar >/dev/null
+          ls -lh app/libs/sherpa-onnx-2.0.1.aar
+
+      - name: Download and bundle English offline voice
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf /tmp/en-model app/src/main/assets/tts/en
+          mkdir -p /tmp/en-model app/src/main/assets/tts/en
+          curl --fail --location --retry 4 --retry-all-errors \
+            https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2 \
+            --output /tmp/en.tar.bz2
+          tar -xjf /tmp/en.tar.bz2 -C /tmp/en-model
+          cp -a /tmp/en-model/vits-piper-en_US-lessac-medium/. app/src/main/assets/tts/en/
+          rm -rf app/src/main/assets/tts/en/test_wavs
+          find app/src/main/assets/tts/en -type f -name '*.wav' -delete
+          test -s app/src/main/assets/tts/en/en_US-lessac-medium.onnx
+          test -s app/src/main/assets/tts/en/tokens.txt
+          test -s app/src/main/assets/tts/en/lexicon.txt
+          ls -lh app/src/main/assets/tts/en/en_US-lessac-medium.onnx
+
+      - name: Download and bundle Chinese offline voice
+        shell: bash
+        run: |
+          set -euxo pipefail
+          rm -rf /tmp/zh-model app/src/main/assets/tts/zh
+          mkdir -p /tmp/zh-model app/src/main/assets/tts/zh
+          curl --fail --location --retry 4 --retry-all-errors \
+            https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2 \
+            --output /tmp/zh.tar.bz2
+          tar -xjf /tmp/zh.tar.bz2 -C /tmp/zh-model
+          cp -a /tmp/zh-model/kokoro-multi-lang-v1_0/. app/src/main/assets/tts/zh/
+          rm -rf app/src/main/assets/tts/zh/test_wavs
+          find app/src/main/assets/tts/zh -type f -name '*.wav' -delete
+          test -s app/src/main/assets/tts/zh/model.onnx
+          test -s app/src/main/assets/tts/zh/voices.bin
+          test -s app/src/main/assets/tts/zh/tokens.txt
+          test -s app/src/main/assets/tts/zh/lexicon-zh.txt
+          ls -lh app/src/main/assets/tts/zh/model.onnx app/src/main/assets/tts/zh/voices.bin
+
+      - name: Verify bundled voice assets
+        shell: bash
+        run: |
+          set -euxo pipefail
+          du -sh app/src/main/assets/tts
+          find app/src/main/assets/tts -maxdepth 2 -type f -printf '%p %s bytes\n' | sort
+          test -s app/src/main/assets/tts/en/en_US-lessac-medium.onnx
+          test -s app/src/main/assets/tts/zh/model.onnx
+          test -s app/src/main/assets/tts/zh/voices.bin
+
+      - name: Build V5.3.3 debug APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Verify APK and bundled model names
+        shell: bash
+        run: |
+          set -euxo pipefail
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          unzip -t "$APK" >/dev/null
+          unzip -l "$APK" | grep -E 'assets/tts/(en/en_US-lessac-medium.onnx|zh/model.onnx|zh/voices.bin)'
+          ls -lh "$APK"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lop-Hoc-Thong-Minh-AI-V5.3.3-CN-EN-OFFLINE-APK
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
