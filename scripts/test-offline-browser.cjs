@@ -59,7 +59,7 @@ const { pathToFileURL } = require('url');
     scorePoints('Automated test', 10);
     return new Promise(resolve => setTimeout(() => resolve({
       before, after: questionIndex, hasQuestion: !!currentItem,
-      saved: !!localStorage.getItem('ai_offline_session_v537')
+      saved: !!localStorage.getItem('ai_offline_session_v535')
     }), 3700));
   });
   if (answerTest.after <= answerTest.before || !answerTest.hasQuestion || !answerTest.saved)
