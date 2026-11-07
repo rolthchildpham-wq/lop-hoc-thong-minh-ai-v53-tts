@@ -1,0 +1,7 @@
+{
+  "name": "lop-hoc-thong-minh-ai",
+  "version": "5.3.3",
+  "private": true,
+  "description": "Lop Hoc Thong Minh AI Android wrapper with offline Sherpa-ONNX CN/EN voices",
+  "scripts": { "build": "echo Static Android web app - Gradle project builds APK" }
+}
