@@ -23,7 +23,7 @@ const { pathToFileURL } = require('url');
   const startup = await page.evaluate(() => ({
     appMode: window.appMode, sub: window.currentSubCategory,
     solo: typeof isSolo !== 'undefined' ? isSolo : null,
-    hasQuestion: !!window.currentItem,
+    hasQuestion: !!currentItem,
     title: document.title
   }));
   if (!startup.hasQuestion) throw new Error('Offline auto-start did not render a question: ' + JSON.stringify(startup));
@@ -37,13 +37,13 @@ const { pathToFileURL } = require('url');
   for (const [mode, sub] of modes) {
     const result = await page.evaluate(({mode, sub}) => {
       setAppMode(mode, sub, 'offline-test');
-      const item = window.currentItem;
+      const item = currentItem;
       const before = questionIndex;
       nextQuestionManually();
       return {
         mode: appMode, sub: currentSubCategory,
         itemExists: !!item, itemKeys: item ? Object.keys(item).slice(0, 8) : [],
-        nextIndex: questionIndex, nextItemExists: !!window.currentItem,
+        nextIndex: questionIndex, nextItemExists: !!currentItem,
         dataCount: mode === 'english' ? (DATA_BANK.english[sub] || []).length :
           mode === 'chinese_hsk' ? (DATA_BANK.chinese_hsk[sub] || []).length :
           ((DATA_BANK[mode] || {})[sub] || []).length
