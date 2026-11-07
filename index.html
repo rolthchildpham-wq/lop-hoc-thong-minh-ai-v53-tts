@@ -2969,75 +2969,78 @@ window.SmartPlatform52={version:VERSION,CEFR_COUNTS,HSK_COUNTS,openCenter,closeC
 
 <script id="offline-session-persistence">
 (function(){
-  const KEY='ai_offline_session_v535';
-  function isOffline(){try{return !!(window.AndroidVoice&&AndroidVoice.isOffline());}catch(e){return false;}}
-  function save(resumeIndex,answered){
-    if(!isOffline())return;
+  'use strict';
+  const KEY='ai_offline_session_v537';
+  function offline(){try{return !!(window.AndroidVoice&&AndroidVoice.isOffline());}catch(_){return false;}}
+  function safeJSON(v){try{return JSON.parse(v||'{}')||{};}catch(_){return {};}}
+  function save(){
+    if(!offline())return;
     try{
-      const state={
+      const s={
         mode:typeof appMode!=='undefined'?appMode:'english',
         sub:typeof currentSubCategory!=='undefined'?currentSubCategory:'A1',
         questionIndex:typeof questionIndex!=='undefined'?questionIndex:0,
-        resumeIndex:Number.isFinite(resumeIndex)?resumeIndex:(typeof questionIndex!=='undefined'?questionIndex:0),
         score:typeof STUDENTS!=='undefined'&&STUDENTS[0]?Number(STUDENTS[0].score)||0:0,
         streak:typeof userStreak!=='undefined'?Number(userStreak)||0:0,
         name:typeof STUDENTS!=='undefined'&&STUDENTS[0]?STUDENTS[0].name:'Học viên 01',
-        answered:!!answered,
+        englishDeck:typeof englishDeckState!=='undefined'?englishDeckState:{},
+        grade5Deck:typeof grade5DeckState!=='undefined'?grade5DeckState:{},
         savedAt:Date.now()
       };
-      localStorage.setItem(KEY,JSON.stringify(state));
-      localStorage.setItem('ai_offline_learning_state',JSON.stringify({mode:state.mode,sub:state.sub}));
-      if(typeof saveStudentProfile==='function')saveStudentProfile({name:state.name,score:state.score,streak:state.streak});
-    }catch(e){console.warn('Offline save failed',e);}
+      localStorage.setItem(KEY,JSON.stringify(s));
+      localStorage.setItem('ai_offline_learning_state',JSON.stringify({mode:s.mode,sub:s.sub}));
+      if(typeof saveStudentProfile==='function')saveStudentProfile({name:s.name,score:s.score,streak:s.streak});
+    }catch(e){console.warn('[OFFLINE] save session',e);}
   }
   window.__saveOfflineSession=save;
-  if(typeof window.loadQuestion==='function'&&!window.loadQuestion.__offlineWrapped){
-    const original=window.loadQuestion;
-    const wrapped=function(){const result=original.apply(this,arguments);save(undefined,false);return result;};
-    wrapped.__offlineWrapped=true;window.loadQuestion=wrapped;
-  }
-  if(typeof window.scorePoints==='function'&&!window.scorePoints.__offlineWrapped){
-    const original=window.scorePoints;
-    const wrapped=function(method,bonus){
-      const result=original.apply(this,arguments);
-      save((typeof questionIndex!=='undefined'?questionIndex:0)+1,true);
-      return result;
-    };
-    wrapped.__offlineWrapped=true;window.scorePoints=wrapped;
-  }
-  if(typeof window.setAppMode==='function'&&!window.setAppMode.__offlineWrapped){
-    const original=window.setAppMode;
-    const wrapped=function(){const result=original.apply(this,arguments);save(undefined,false);return result;};
-    wrapped.__offlineWrapped=true;window.setAppMode=wrapped;
-  }
-  if(typeof window.switchTopic==='function'&&!window.switchTopic.__offlineWrapped){
-    const original=window.switchTopic;
-    const wrapped=function(){const result=original.apply(this,arguments);save(undefined,false);return result;};
-    wrapped.__offlineWrapped=true;window.switchTopic=wrapped;
-  }
-  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')save();});
-  window.addEventListener('pagehide',function(){save();});
-  window.addEventListener('beforeunload',function(){save();});
+  window.addEventListener('error',function(e){try{localStorage.setItem('ai_offline_last_error',JSON.stringify({message:String(e.message||''),source:String(e.filename||''),line:e.lineno||0,time:Date.now()}));}catch(_){}});
+  window.addEventListener('unhandledrejection',function(e){try{localStorage.setItem('ai_offline_last_error',JSON.stringify({message:String(e.reason&&e.reason.stack||e.reason||''),time:Date.now()}));}catch(_){}});
+  const wrap=(name,after)=>{const fn=window[name];if(typeof fn!=='function'||fn.__offlineWrapped)return;const w=function(){const r=fn.apply(this,arguments);try{after&&after.apply(this,arguments);save();}catch(e){console.warn('[OFFLINE] '+name,e);}return r;};w.__offlineWrapped=true;window[name]=w;};
+  wrap('setAppMode');
+  wrap('switchTopic');
+  wrap('nextQuestionManually');
+  wrap('loadQuestion');
+  wrap('scorePoints');
+  wrap('startSoloMode');
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')save();});
+  window.addEventListener('pagehide',save);
+  window.addEventListener('beforeunload',save);
 })();
 </script>
 
 <script id="offline-auto-start">
 document.addEventListener('DOMContentLoaded',function(){
   if(!window.AndroidVoice||!AndroidVoice.isOffline())return;
-  let saved={};
-  try{saved=JSON.parse(localStorage.getItem('ai_offline_session_v535')||'{}')||{};}catch(e){}
+  const saved=(function(){try{return JSON.parse(localStorage.getItem('ai_offline_session_v537')||'{}')||{};}catch(e){return {};}})();
   try{
-    const profile=JSON.parse(localStorage.getItem('ai_class_student_profile_v3')||'{}')||{};
+    // A previous online room/guest session must never block local lesson controls.
+    if(typeof fbRole!=='undefined')fbRole='';
+    if(typeof fbRoomRef!=='undefined')fbRoomRef=null;
+    if(typeof fbAnswerRef!=='undefined')fbAnswerRef=null;
+    if(typeof fbHostStarted!=='undefined')fbHostStarted=false;
+    if(typeof fbAdvanceScheduled!=='undefined')fbAdvanceScheduled=false;
+    if(typeof isHost!=='undefined')isHost=false;
+    if(typeof conn!=='undefined')conn=null;
+    if(typeof peer!=='undefined'&&peer){try{peer.destroy();}catch(e){}peer=null;}
+    const profile=(function(){try{return JSON.parse(localStorage.getItem('ai_class_student_profile_v3')||'{}')||{};}catch(e){return {};}})();
     const name=saved.name||profile.name||'Học viên 01';
     const input=document.getElementById('userNameInput');if(input)input.value=name;
-    if(saved.mode&&['english','chinese_hsk','grade5_math','grade5_viet','grade5_eng'].includes(saved.mode))appMode=saved.mode;
+    const modes=['english','chinese_hsk','grade5_math','grade5_viet','grade5_eng'];
+    if(saved.mode&&modes.includes(saved.mode))appMode=saved.mode;
     if(saved.sub&&typeof normalizeLearningSub==='function')currentSubCategory=normalizeLearningSub(appMode,saved.sub);
-    if(Number.isFinite(Number(saved.resumeIndex)))questionIndex=Math.max(0,Number(saved.resumeIndex));
-    else if(Number.isFinite(Number(saved.questionIndex)))questionIndex=Math.max(0,Number(saved.questionIndex));
-    if(typeof STUDENTS!=='undefined'&&STUDENTS[0]){STUDENTS[0].name=name;STUDENTS[0].score=Number(saved.score??profile.score)||0;}
+    if(Number.isFinite(Number(saved.questionIndex)))questionIndex=Math.max(0,Number(saved.questionIndex));
+    if(typeof englishDeckState!=='undefined'&&saved.englishDeck)englishDeckState=saved.englishDeck;
+    if(typeof grade5DeckState!=='undefined'&&saved.grade5Deck)grade5DeckState=saved.grade5Deck;
+    if(typeof STUDENTS!=='undefined'&&STUDENTS[0]){
+      STUDENTS[0].name=name;
+      STUDENTS[0].score=Number(saved.score??profile.score)||0;
+      STUDENTS[0].answered=false;
+    }
     if(typeof userStreak!=='undefined')userStreak=Number(saved.streak??profile.streak)||0;
-  }catch(e){console.warn('Offline restore fallback',e);}
-  if(typeof startSoloMode==='function')startSoloMode();
+    if(typeof isSolo!=='undefined')isSolo=true;
+    if(typeof toggleLangModelUI==='function')toggleLangModelUI();
+    if(typeof startSoloMode==='function')startSoloMode();
+  }catch(e){console.error('[OFFLINE] restore failed',e);try{if(typeof startSoloMode==='function')startSoloMode();}catch(_){}}
 });
 </script>
 
