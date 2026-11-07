@@ -492,7 +492,8 @@ window.FIREBASE_CONFIG = {
   function cancelAll(){
     sequenceId++;
     if('speechSynthesis' in window) window.speechSynthesis.cancel();
-    if(window.KorvaVoice) window.KorvaVoice.cancel();\n    if(window.AndroidVoice) window.AndroidVoice.cancel();
+    if(window.KorvaVoice) window.KorvaVoice.cancel();
+    if(window.AndroidVoice) window.AndroidVoice.cancel();
   }
 
   function speakSequence(parts,opts={}){
