@@ -177,23 +177,10 @@ body { background: #0f172a; color: #fff; height: 100dvh; width: 100vw; overflow:
 #teacherSvg,.teacher-photo{width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain}
 @media(min-width:820px){#teacherAvatarWrap,.teacher-avatar{width:82px;height:98px}}
     </style>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
-    <script data-inline-source="firebase-config.js">
-
-window.FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCjf-Y3jCRUuqN2pUTgOSIcV125zfQGol8",
-  authDomain: "ai-learning-3339.firebaseapp.com",
-  databaseURL: "https://ai-learning-3339-default-rtdb.firebaseio.com",
-  projectId: "ai-learning-3339",
-  storageBucket: "ai-learning-3339.firebasestorage.app",
-  messagingSenderId: "246039255807",
-  appId: "1:246039255807:web:a40e0758b8f2fa6c1d8aca",
-  measurementId: "G-T145G239T2"
-};
-
-</script>
+    
+    
+    
+    
 </head>
 <body>
 <div id="app">
@@ -380,299 +367,37 @@ window.FIREBASE_CONFIG = {
         </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/hanzi-writer@3.7.3/dist/hanzi-writer.min.js"></script>
+
 <script data-inline-source="voice-manager.js">
 (function(){
-  const LANGS={
-    vi:{locale:'vi-VN',label:'Việt',storage:'ai_voice_vi',prefer:[/natural/i,/neural/i,/premium/i,/hoai\s*my/i,/nam\s*minh/i,/vietnamese/i,/google.*vi/i,/microsoft.*vi/i,/apple.*vi/i]},
-    en:{locale:'en-US',label:'English',storage:'ai_voice_en',prefer:[/natural/i,/neural/i,/premium/i,/aria/i,/jenny/i,/guy/i,/samantha/i,/ava/i,/andrew/i,/google.*us.*english/i,/microsoft.*english/i]},
-    zh:{locale:'zh-CN',label:'中文',storage:'ai_voice_zh',prefer:[/natural/i,/neural/i,/premium/i,/xiaoxiao/i,/yunxi/i,/xiaoyi/i,/tingting/i,/mei[- ]?jia/i,/google.*中文/i,/microsoft.*chinese/i]}
-  };
-  const robotPatterns=[/espeak/i,/festival/i,/compact/i,/mbrola/i];
-  const state={ready:false,voices:[],selected:{vi:null,en:null,zh:null},status:'loading'};
-  let sequenceId=0;
-
-  function langKey(locale){
-    const x=(locale||'').toLowerCase();
-    if(x.startsWith('zh'))return 'zh';
-    if(x.startsWith('en'))return 'en';
-    return 'vi';
-  }
-  function scoreVoice(v,key){
-    const cfg=LANGS[key], name=v.name||'', lang=(v.lang||'').toLowerCase();
-    const target=cfg.locale.toLowerCase(), base=target.split('-')[0];
-    if(!lang.startsWith(base)) return -9999;
-    let s=lang===target?120:90;
-    cfg.prefer.forEach((r,i)=>{if(r.test(name)) s+=45-i;});
-    robotPatterns.forEach(r=>{if(r.test(name))s-=120;});
-    if(/natural|neural|premium|enhanced/i.test(name))s+=45;
-    if(v.localService===false)s+=10;
-    if(key==='en' && /en[-_ ]?(us|gb)|american|british/i.test((lang+' '+name)))s+=10;
-    if(key==='zh' && /mandarin|putonghua|普通话|中文/i.test(name+' '+lang))s+=12;
-    return s;
-  }
-  function pick(key,list){
-    const cfg=LANGS[key], saved=localStorage.getItem(cfg.storage);
-    const candidates=list.filter(v=>(v.lang||'').toLowerCase().startsWith(cfg.locale.slice(0,2).toLowerCase()));
-    let chosen=saved?candidates.find(v=>v.name===saved):null;
-    if(!chosen)chosen=candidates.map(v=>({v,s:scoreVoice(v,key)})).sort((a,b)=>b.s-a.s)[0]?.v||null;
-    if(chosen)localStorage.setItem(cfg.storage,chosen.name);
-    return chosen;
-  }
-  function loadVoices(){
-    if(!('speechSynthesis' in window)){state.status='unsupported';updateUI();return;}
-    const list=window.speechSynthesis.getVoices()||[]; state.voices=list;
-    state.selected.vi=pick('vi',list); state.selected.en=pick('en',list); state.selected.zh=pick('zh',list);
-    const count=Object.values(state.selected).filter(Boolean).length;
-    state.ready=count>0; state.status=count===3?'ready':(count?'partial':'missing'); updateUI();
-  }
-  function shortName(v){return v?(v.name||v.lang||'voice').replace(/Microsoft|Google|Online \(Natural\)|Desktop/gi,'').trim():'chưa có';}
-  function isNatural(v){return !!(v&&/natural|neural|premium|enhanced|xiaoxiao|yunxi|jenny|aria|ava|hoai\s*my|nam\s*minh/i.test(v.name||''));}
-  function korvaText(){
-    const k=window.KorvaVoice;
-    if(!k) return 'VI: đang khởi tạo KorvaTTS';
-    if(k.state.ready) return `VI: KorvaTTS • ${k.voices[k.state.voice]||k.state.voice} • ${k.state.backend}`;
-    if(k.state.status==='loading') return `VI: ${k.state.progress||'đang tải gói giọng tự nhiên…'}`;
-    if(k.state.status==='error') return 'VI: KorvaTTS lỗi, đang dùng voice hệ thống dự phòng';
-    return 'VI: KorvaTTS chưa nạp (chống treo)';
-  }
-  function updateUI(){
-    const badge=document.getElementById('voicePackStatus'); if(!badge)return;
-    const k=window.KorvaVoice;
-    const viAI=!!(k&&k.state.ready);
-    const en=state.selected.en, zh=state.selected.zh;
-    const natural=[en,zh].filter(isNatural).length + (viAI?1:0);
-    const ok=(viAI?1:0)+(en?1:0)+(zh?1:0);
-    if(k&&k.state.status==='loading'){
-      badge.textContent='🎙️ '+(k.state.progress||'Đang tải giọng Việt AI…');
-      badge.className='voice-pack-status partial';
-    }else if(viAI){
-      badge.textContent=`🎙️ Voice AI ${ok}/3 • Natural ${natural}/3`;
-      badge.className='voice-pack-status '+(ok===3&&natural>=2?'ready':'partial');
-    }else{
-      badge.textContent=`🎙️ Voice AI ${ok}/3 • VI đang dùng dự phòng`;
-      badge.className='voice-pack-status '+(ok?'partial':'missing');
-    }
-    badge.title=`${korvaText()}\nEN: ${shortName(en)}\nZH: ${shortName(zh)}`;
-  }
-  function clean(text){return String(text||'').replace(/<[^>]*>?/gm,'').replace(/\s+/g,' ').trim();}
-
-  function systemSpeakAsync(text,opts={}){
-    return new Promise(resolve=>{
-      const locale=opts.lang||'vi-VN', key=langKey(locale), cleanText=clean(text);
-      // Prefer the bundled Sherpa-ONNX native voice for English and Mandarin.
-      if(window.AndroidVoice && (key==='en'||key==='zh')){
-        try{
-          window.AndroidVoice.speak(cleanText,locale);
-          if(opts.onstart)opts.onstart();
-          const delay=Math.max(900,Math.ceil(cleanText.length*68/Math.max(.6,opts.rate||1)));
-          setTimeout(()=>{if(opts.onend)opts.onend();resolve(true);},delay);
-          return;
-        }catch(nativeError){console.warn('Native offline TTS failed; falling back to Web Speech',nativeError);}
-      }
-      if(!('speechSynthesis' in window)){resolve(false);return;}
-      const u=new SpeechSynthesisUtterance(cleanText);
-      u.lang=locale; u.rate=opts.rate||1; u.pitch=opts.pitch||1;
-      const v=state.selected[key]; if(v)u.voice=v;
-      u.onstart=()=>opts.onstart&&opts.onstart();
-      u.onend=()=>{opts.onend&&opts.onend();resolve(true);};
-      u.onerror=()=>{opts.onerror&&opts.onerror();resolve(false);};
-      window.speechSynthesis.speak(u);
-    });
-  }
-
-  function speak(text,opts={}){
-    const locale=opts.lang||'vi-VN', key=langKey(locale), t=clean(text);
-    if(!t)return false;
-    if(key==='vi' && window.KorvaVoice){
-      window.KorvaVoice.speak(t,opts).then(ok=>{ if(!ok) systemSpeakAsync(t,opts); });
-      return true;
-    }
-    systemSpeakAsync(t,opts); return true;
-  }
-
-  function cancelAll(){
-    sequenceId++;
-    if('speechSynthesis' in window) window.speechSynthesis.cancel();
-    if(window.AndroidVoice){try{window.AndroidVoice.cancel();}catch(e){}}
-    if(window.KorvaVoice) window.KorvaVoice.cancel();
-  }
-
-  function speakSequence(parts,opts={}){
-    if(opts.cancel!==false)cancelAll();
-    const id=sequenceId;
-    const valid=(parts||[]).filter(p=>p&&clean(p.text)); if(!valid.length)return false;
-    (async()=>{
-      for(let i=0;i<valid.length;i++){
-        if(id!==sequenceId)return;
-        const p=valid[i], key=langKey(p.lang||'vi-VN');
-        const cfg={lang:p.lang||'vi-VN',rate:p.rate||1,pitch:p.pitch||1,onstart:i===0?opts.onstart:null,onend:i===valid.length-1?opts.onend:null,onerror:i===valid.length-1?opts.onerror:null};
-        if(key==='vi'&&window.KorvaVoice){
-          const ok=await window.KorvaVoice.speak(p.text,cfg);
-          if(!ok && id===sequenceId) await systemSpeakAsync(p.text,cfg);
-        }else{
-          await systemSpeakAsync(p.text,cfg);
-        }
-      }
-    })();
-    return true;
-  }
-  function openSetup(){
-    const k=window.KorvaVoice;
-    const viLine=k&&k.state.ready
-      ?`🇻🇳 Việt: KorvaTTS — ${k.voices[k.state.voice]||k.state.voice} • ${k.state.backend} • 44.1 kHz`
-      :k&&k.state.status==='loading'
-        ?`🇻🇳 Việt: ${k.state.progress||'Đang tải gói KorvaTTS…'}`
-        :`🇻🇳 Việt: KorvaTTS chưa sẵn sàng${k&&k.state.error?' — '+k.state.error:''}`;
-    const low=!!(k&&k.isLikelyLowPower&&k.isLikelyLowPower());
-    const lines=[
-      'VOICE AI ĐA NGÔN NGỮ', '', viLine,
-      `🇬🇧 English: ${state.selected.en?state.selected.en.name+' ['+state.selected.en.lang+']':'Chưa có voice en-US/en-GB'}`,
-      `🇨🇳 中文: ${state.selected.zh?state.selected.zh.name+' ['+state.selected.zh.lang+']':'Chưa có voice zh-CN'}`,
-      '',
-      low?'⚠️ Thiết bị được nhận diện cấu hình thấp. App sẽ KHÔNG tự nạp model Korva nặng để tránh đứng.':'KorvaTTS hiện không tự nạp khi mở web để tránh khóa giao diện.',
-      'Nhấn OK để đóng. Muốn tải giọng Việt AI, dùng nút ⬇ Nạp VI riêng bên cạnh nút 🎙️.'
-    ]; alert(lines.join('\n'));
-  }
-  function testAll(){
-    speakSequence([
-      {text:'Xin chào, cô sẽ đồng hành cùng em trong lớp học thông minh.',lang:'vi-VN',rate:1.0},
-      {text:'Hello! Let us practice English with a natural native voice.',lang:'en-US',rate:.96},
-      {text:'你好！我们一起学习标准普通话。',lang:'zh-CN',rate:.9}
-    ]);
-  }
-  async function loadVietnameseAI(){
-    const k=window.KorvaVoice, btn=document.getElementById('loadViVoiceBtn');
-    if(!k){ alert('Engine giọng Việt AI không khởi tạo được. Hãy tải lại trang.'); return false; }
-    if(k.state.ready){
-      if(btn){btn.textContent='✓ VI AI';btn.className='voice-load-btn ready';}
-      testAll();
-      return true;
-    }
-    if(k.state.status==='loading') return false;
-    if(btn){btn.disabled=true;btn.textContent='⏳ Đang nạp…';btn.className='voice-load-btn loading';}
-    try{
-      const ok=await k.forceInit();
-      if(ok){
-        if(btn){btn.textContent='✓ VI AI';btn.className='voice-load-btn ready';}
-        speak('Xin chào, giọng Việt AI tự nhiên đã sẵn sàng.',{lang:'vi-VN',rate:1.0});
-      }else{
-        if(btn){btn.textContent='↻ Nạp lại VI';btn.className='voice-load-btn error';}
-        alert('Không tải được Voice AI Việt.\n\nChi tiết: '+(k.state.error||'Không xác định')+'\n\nỨng dụng vẫn dùng giọng hệ thống dự phòng.');
-      }
-      return !!ok;
-    }catch(err){
-      if(btn){btn.textContent='↻ Nạp lại VI';btn.className='voice-load-btn error';}
-      alert('Lỗi khi nạp Voice AI Việt.\n\nChi tiết: '+((err&&err.message)||k.state.error||String(err))+'\n\nỨng dụng vẫn dùng giọng hệ thống dự phòng.');
-      return false;
-    }finally{ if(btn) btn.disabled=false; updateUI(); }
-  }
-  function syncLoadButton(){
-    const k=window.KorvaVoice, btn=document.getElementById('loadViVoiceBtn'); if(!btn||!k)return;
-    if(k.state.ready){btn.disabled=false;btn.textContent='✓ VI AI';btn.className='voice-load-btn ready';}
-    else if(k.state.status==='loading'){btn.disabled=true;btn.textContent='⏳ Đang nạp…';btn.className='voice-load-btn loading';}
-    else if(k.state.status==='error'){btn.disabled=false;btn.textContent='↻ Nạp lại VI';btn.className='voice-load-btn error';}
-    else{btn.disabled=false;btn.textContent='⬇ Nạp VI';btn.className='voice-load-btn';}
-  }
-  window.MultiVoiceManager={state,loadVoices,speak,speakSequence,openSetup,testAll,loadVietnameseAI,cancelAll,getVoice:(locale)=>state.selected[langKey(locale)]};
-  window.HanoiVoiceManager=window.MultiVoiceManager;
-  if('speechSynthesis' in window)window.speechSynthesis.onvoiceschanged=loadVoices;
-  window.addEventListener('korva-status',()=>{updateUI();syncLoadButton();});
-  document.addEventListener('DOMContentLoaded',()=>{loadVoices();syncLoadButton();setTimeout(loadVoices,350);setTimeout(loadVoices,1200);setTimeout(()=>{updateUI();syncLoadButton();},1600);});
-})();
-
-</script>
-<script type="importmap">
-{
-  "imports": {
-    "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort.all.bundle.min.mjs"
-  }
-}
-</script>
-<script>
-/* ===== V4.6 Embedded lazy KorvaTTS engine =====
-   The engine object exists immediately. Heavy helper/model assets load only
-   after the user presses "Nạp VI". This avoids race conditions and prevents
-   missing korva-voice.js on single-file EdgeOne deployments. */
-(function(){
-  const MODEL_ROOT='https://huggingface.co/dogenthq/KorvaTTS/resolve/e5c8c218e93c1d8daa53bfe0e62b8fbc5a5e991d';
-  const ONNX_ROOT=MODEL_ROOT+'/onnx';
-  const HELPER_URL='https://cdn.jsdelivr.net/gh/supertone-oss-archive/supertonic@main/web/helper.js';
-  const DEFAULT_VOICE='ngoc_huyen';
-  const VOICE_NAMES={
-    bao_kim:'Bảo Kim', khanh_vy:'Khánh Vy', ngoc_huyen:'Ngọc Huyền', phuong_linh:'Phương Linh', quynh_nhu:'Quỳnh Như',
-    gia_bao:'Gia Bảo', hoang_nam:'Hoàng Nam', huu_dat:'Hữu Đạt', quang_huy:'Quang Huy', thanh_phong:'Thanh Phong'
-  };
-  const state={status:'idle',ready:false,backend:'',voice:localStorage.getItem('korva_voice_vi')||DEFAULT_VOICE,progress:'',error:'',modelVersion:'KorvaTTS',currentAudio:null};
-  let helper=null,tts=null,style=null,initPromise=null,synthToken=0,backgroundInitStarted=false;
-  function emit(){window.dispatchEvent(new CustomEvent('korva-status',{detail:{...state}}));}
-  function setStatus(status,progress=''){state.status=status;state.progress=progress;emit();}
-  function isLikelyLowPower(){const dm=Number(navigator.deviceMemory||0),hc=Number(navigator.hardwareConcurrency||0),ua=navigator.userAgent||'';const mobile=/Android|iPhone|iPad|Mobile/i.test(ua);return (dm&&dm<=4)||(hc&&hc<=4)||(mobile&&dm&&dm<=6);}
-  function withTimeout(p,ms,label){return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error(label||'timeout')),ms))]);}
-  function modelUrls(){return [`${ONNX_ROOT}/duration_predictor.onnx`,`${ONNX_ROOT}/text_encoder.onnx`,`${ONNX_ROOT}/vector_estimator.onnx`,`${ONNX_ROOT}/vocoder.onnx`,`${ONNX_ROOT}/tts.json`,`${ONNX_ROOT}/unicode_indexer.json`,`${MODEL_ROOT}/voice_styles/${state.voice}.json`];}
-  async function ensureHelper(){
-    if(helper)return helper;
-    setStatus('loading','Đang tải engine TTS…');
-    try{helper=await withTimeout(import(HELPER_URL),20000,'Không tải được thư viện TTS (20s timeout)');return helper;}
-    catch(e){throw new Error('Không tải được thư viện TTS từ jsDelivr: '+(e&&e.message?e.message:e));}
-  }
-  async function warmHttpCache(){if(!navigator.onLine)return;const conn=navigator.connection||navigator.mozConnection||navigator.webkitConnection;if(conn&&conn.saveData)return;for(const url of modelUrls().slice(4)){try{await fetch(url,{cache:'force-cache',mode:'cors'});}catch(_){}}}
-  async function loadWithProvider(provider){
-    const h=await ensureHelper();
-    const result=await h.loadTextToSpeech(ONNX_ROOT,{executionProviders:[provider],graphOptimizationLevel:'all'},(name,current,total)=>setStatus('loading',`Đang nạp giọng Việt AI ${current}/${total}: ${name}`));
-    tts=result.textToSpeech;
-    style=await h.loadVoiceStyle([`${MODEL_ROOT}/voice_styles/${state.voice}.json`]);
-    state.backend=provider.toUpperCase();
-  }
-  async function init(options={}){
-    if(state.ready)return true;
-    if(initPromise)return initPromise;
-    initPromise=(async()=>{
-      try{
-        state.error='';
-        setStatus('loading','Đang tải gói giọng Việt tự nhiên lần đầu…');
-        await ensureHelper();
-        await warmHttpCache();
-        try{
-          if('gpu' in navigator)await withTimeout(loadWithProvider('webgpu'),45000,'WebGPU init timeout');
-          else throw new Error('WebGPU unavailable');
-        }catch(webgpuError){
-          console.warn('[KorvaVoice] WebGPU fallback:',webgpuError);
-          if(isLikelyLowPower()&&!options.force)throw new Error('Thiết bị cấu hình thấp: không tự nạp model WASM nặng');
-          await withTimeout(loadWithProvider('wasm'),60000,'WASM init timeout');
-        }
-        state.ready=true;state.error='';setStatus('ready',`Giọng Việt AI ${VOICE_NAMES[state.voice]||state.voice} • ${state.backend} • 44.1 kHz`);return true;
-      }catch(err){
-        state.error=err&&err.message?err.message:String(err);state.ready=false;setStatus('error','Không tải được gói giọng Việt AI');console.error('[KorvaVoice] init failed',err);return false;
-      }finally{
-        if(!state.ready)initPromise=null;
-      }
-    })();
-    return initPromise;
-  }
-  function cancel(){synthToken++;if(state.currentAudio){try{state.currentAudio.pause();state.currentAudio.src='';}catch(_){}state.currentAudio=null;}}
-  async function speak(text,opts={}){
-    const myToken=++synthToken,clean=String(text||'').replace(/<[^>]*>?/gm,'').replace(/\s+/g,' ').trim();if(!clean)return false;
-    if(!state.ready){if(state.status!=='loading'&&!backgroundInitStarted&&!isLikelyLowPower()){backgroundInitStarted=true;setTimeout(()=>init().finally(()=>backgroundInitStarted=false),50);}return false;}
-    if(myToken!==synthToken)return false;
-    try{
-      opts.onstart&&opts.onstart();setStatus('speaking','Cô AI đang tạo giọng Việt tự nhiên…');
-      const steps=(navigator.hardwareConcurrency||4)>=8?24:16,speed=Math.max(.78,Math.min(1.3,opts.rate||1));
-      const result=await tts.call(clean,'vi',style,steps,speed,.18),wav=result.wav,duration=result.duration;
-      if(myToken!==synthToken)return false;
-      const wavLen=Math.floor(tts.sampleRate*duration[0]);
-      const wavBuffer=helper.writeWavFile(wav.slice(0,wavLen),tts.sampleRate);
-      const blobUrl=URL.createObjectURL(new Blob([wavBuffer],{type:'audio/wav'})),audio=new Audio(blobUrl);state.currentAudio=audio;audio.volume=opts.volume==null?1:opts.volume;
-      await new Promise((resolve,reject)=>{audio.onended=()=>{URL.revokeObjectURL(blobUrl);resolve();};audio.onerror=()=>{URL.revokeObjectURL(blobUrl);reject(new Error('Không phát được audio KorvaTTS'));};audio.play().catch(reject);});
-      if(myToken===synthToken){setStatus('ready',`Giọng Việt AI ${VOICE_NAMES[state.voice]||state.voice} • ${state.backend} • 44.1 kHz`);opts.onend&&opts.onend();}return true;
-    }catch(err){state.error=err&&err.message?err.message:String(err);setStatus('error','Giọng Việt AI lỗi tạm thời — chuyển sang voice dự phòng');opts.onerror&&opts.onerror(err);console.error('[KorvaVoice] synth failed',err);return false;}
-  }
-  async function setVoice(voice){if(!VOICE_NAMES[voice])return false;cancel();state.voice=voice;localStorage.setItem('korva_voice_vi',voice);try{if(!tts){const ok=await init({force:true});if(!ok)return false;}const h=await ensureHelper();style=await h.loadVoiceStyle([`${MODEL_ROOT}/voice_styles/${voice}.json`]);setStatus('ready',`Giọng Việt AI ${VOICE_NAMES[voice]} • ${state.backend} • 44.1 kHz`);return true;}catch(err){state.error=err&&err.message?err.message:String(err);setStatus('error','Không đổi được giọng Việt AI');return false;}}
-  window.KorvaVoice={state,init,speak,cancel,setVoice,voices:VOICE_NAMES,modelUrls,isLikelyLowPower,forceInit:()=>{backgroundInitStarted=true;initPromise=null;return init({force:true}).finally(()=>backgroundInitStarted=false);}};
-  setStatus('idle','Giọng Việt AI sẵn sàng — bấm Nạp VI để tải');
+ const LANGS={vi:{locale:'vi-VN',label:'Tiếng Việt'},en:{locale:'en-US',label:'English'},zh:{locale:'zh-CN',label:'中文'}};
+ const state={ready:false,voices:[],selected:{vi:null,en:null,zh:null},status:'loading',offlineNative:false};let sequenceId=0;
+ const keyOf=l=>String(l||'').toLowerCase().startsWith('zh')?'zh':String(l||'').toLowerCase().startsWith('en')?'en':'vi';
+ const clean=t=>String(t||'').replace(/<[^>]*>?/gm,'').replace(/\s+/g,' ').trim();
+ function nativeReady(){return !!(window.AndroidVoice&&typeof window.AndroidVoice.speak==='function');}
+ function loadVoices(){
+  const list=('speechSynthesis'in window)?(window.speechSynthesis.getVoices()||[]):[];state.voices=list;
+  if(nativeReady()){state.selected.en={name:'Sherpa-ONNX English (offline)',lang:'en-US',localService:true,native:true};state.selected.zh={name:'Sherpa-ONNX 中文 Kokoro (offline)',lang:'zh-CN',localService:true,native:true};state.selected.vi=list.find(v=>(v.lang||'').toLowerCase().startsWith('vi'))||null;state.offlineNative=true;state.ready=true;state.status='ready';}
+  else{for(const k of ['vi','en','zh'])state.selected[k]=list.find(v=>(v.lang||'').toLowerCase().startsWith(LANGS[k].locale.slice(0,2)))||null;state.ready=Object.values(state.selected).some(Boolean);state.status=Object.values(state.selected).every(Boolean)?'ready':state.ready?'partial':'missing';}
+  updateUI();
+ }
+ function updateUI(){const b=document.getElementById('voicePackStatus');if(!b)return;if(nativeReady()){b.textContent='🎙️ Offline: VI hệ thống • EN Sherpa • 中文 Kokoro';b.className='voice-pack-status ready';b.title='EN và 中文 dùng mô hình trong APK; VI dùng TTS Android.';}else{const n=Object.values(state.selected).filter(Boolean).length;b.textContent='🎙️ Voice thiết bị '+n+'/3';b.className='voice-pack-status '+(n?'partial':'missing');}}
+ function systemSpeakAsync(text,opts={}){return new Promise(resolve=>{const locale=opts.lang||'vi-VN',key=keyOf(locale),t=clean(text);if(!t){resolve(false);return;}
+  if(nativeReady()){try{window.AndroidVoice.speak(t,locale);if(opts.onstart)opts.onstart();setTimeout(()=>{if(opts.onend)opts.onend();resolve(true);},Math.max(1000,Math.ceil(t.length*78/Math.max(.6,opts.rate||1))));return;}catch(e){console.warn('Native TTS error',e);}}
+  if(!('speechSynthesis'in window)){resolve(false);return;}const u=new SpeechSynthesisUtterance(t);u.lang=locale;u.rate=opts.rate||1;u.pitch=opts.pitch||1;const v=state.selected[key];if(v&&!v.native)u.voice=v;u.onstart=()=>opts.onstart&&opts.onstart();u.onend=()=>{opts.onend&&opts.onend();resolve(true);};u.onerror=()=>{opts.onerror&&opts.onerror();resolve(false);};window.speechSynthesis.speak(u);
+ });}
+ function speak(text,opts={}){if(!clean(text))return false;systemSpeakAsync(text,opts);return true;}
+ function cancelAll(){sequenceId++;if('speechSynthesis'in window)window.speechSynthesis.cancel();if(nativeReady())try{window.AndroidVoice.cancel();}catch(e){}}
+ function speakSequence(parts,opts={}){if(opts.cancel!==false)cancelAll();const id=sequenceId,valid=(parts||[]).filter(p=>p&&clean(p.text));if(!valid.length)return false;(async()=>{for(let i=0;i<valid.length;i++){if(id!==sequenceId)return;const p=valid[i];await systemSpeakAsync(p.text,{lang:p.lang||'vi-VN',rate:p.rate||1,pitch:p.pitch||1,onstart:i===0?opts.onstart:null,onend:i===valid.length-1?opts.onend:null,onerror:i===valid.length-1?opts.onerror:null});}})();return true;}
+ function openSetup(){alert('VOICE AI OFFLINE\n\n🇻🇳 Tiếng Việt: TTS hệ thống Android (cài gói tiếng Việt offline trên máy).\n🇬🇧 English: Sherpa-ONNX Piper tích hợp trong APK.\n🇨🇳 中文: Sherpa-ONNX Kokoro tích hợp trong APK.\n\nEN và 中文 không cần Internet.');}
+ function testAll(){speakSequence([{text:'Xin chào, chúc em học tốt.',lang:'vi-VN'},{text:'Hello! Let us practice English.',lang:'en-US'},{text:'你好！我们一起学习中文。',lang:'zh-CN'}]);}
+ function loadVietnameseAI(){testAll();return Promise.resolve(true);}
+ function syncLoadButton(){const b=document.getElementById('loadViVoiceBtn');if(b){b.textContent='🔊 Thử 3 giọng';b.title='Kiểm tra lần lượt tiếng Việt, Anh và Trung';}}
+ window.MultiVoiceManager={state,loadVoices,speak,speakSequence,openSetup,testAll,loadVietnameseAI,cancelAll,getVoice:locale=>state.selected[keyOf(locale)]};window.HanoiVoiceManager=window.MultiVoiceManager;
+ if('speechSynthesis'in window)window.speechSynthesis.onvoiceschanged=loadVoices;
+ document.addEventListener('DOMContentLoaded',()=>{loadVoices();syncLoadButton();setTimeout(loadVoices,500);setTimeout(loadVoices,1500);});
 })();
 </script>
-
 <script data-inline-source="hsk-pro-data.js">
 (function(){
 const V={
