@@ -38,7 +38,7 @@ import java.util.Set;
 
 public class MainActivity extends Activity {
     private static final String LIVE_URL = "https://aihuedanlearn.edgeone.dev/";
-    private static final String OFFLINE_URL = "file:///android_asset/www/offline.html";
+    private static final String OFFLINE_URL = "file:///android_asset/www/index.html";
     private static final int REQ_WEB_PERMS = 71;
     private static final int REQ_TTS_CHECK = 72;
 
@@ -70,7 +70,6 @@ public class MainActivity extends Activity {
         webView = new WebView(this);
         root.addView(webView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         offlineMode = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_OFFLINE, true);
-        createModeButton();
         setContentView(root);
 
         applySystemBarInsets();
@@ -116,7 +115,7 @@ public class MainActivity extends Activity {
         if (webView == null) return;
         webView.stopLoading();
         if (offlineMode) {
-            webView.loadUrl("file:///android_asset/www/index.html");
+            webView.loadUrl(OFFLINE_URL);
             Toast.makeText(this, "Đã chuyển sang chế độ OFFLINE", Toast.LENGTH_SHORT).show();
         } else if (isOnline()) {
             webView.loadUrl(LIVE_URL);
@@ -124,7 +123,7 @@ public class MainActivity extends Activity {
         } else {
             offlineMode = true;
             getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OFFLINE, true).apply();
-            updateModeButton(); webView.loadUrl("file:///android_asset/www/index.html");
+            updateModeButton(); webView.loadUrl(OFFLINE_URL);
             Toast.makeText(this, "Không có Internet — tiếp tục dùng OFFLINE", Toast.LENGTH_LONG).show();
         }
     }
@@ -187,9 +186,10 @@ public class MainActivity extends Activity {
             @Override public void onPageFinished(WebView view, String url) {
                 injectMobilePatch();
                 injectNativeVoiceHook();
+                injectModeControl();
             }
 
-            @Override public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
+            @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {\n                String scheme = req.getUrl().getScheme();\n                if (offlineMode && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {\n                    return new android.webkit.WebResourceResponse("text/plain", "UTF-8", new java.io.ByteArrayInputStream(new byte[0]));\n                }\n                return super.shouldInterceptRequest(view, req);\n            }\n\n            @Override public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
                 if (req.isForMainFrame() && !offlineMode && !view.getUrl().startsWith("file:///android_asset/")) {
                     Toast.makeText(MainActivity.this, "Mất mạng — chuyển sang trang offline", Toast.LENGTH_SHORT).show();
                     offlineMode = true;
@@ -199,6 +199,12 @@ public class MainActivity extends Activity {
                 }
             }
         });
+    }
+
+
+    private void injectModeControl() {
+        String js = "(function(){var host=document.querySelector('.header-actions');if(!host)return;var b=document.getElementById('nativeModeToggle');if(!b){b=document.createElement('button');b.id='nativeModeToggle';b.type='button';b.className='action-top-btn';b.style.cssText='white-space:nowrap;flex-shrink:0;border:1px solid #ffd166;background:#172033;color:#ffd166;font-weight:900;padding:5px 7px;border-radius:8px;';b.onclick=function(){try{AndroidVoice.toggleMode();}catch(e){}};host.appendChild(b);}b.textContent=AndroidVoice.modeLabel();})();";
+        webView.evaluateJavascript(js, null);
     }
 
     private void injectMobilePatch() {
@@ -232,7 +238,7 @@ public class MainActivity extends Activity {
     public class NativeVoiceBridge {
         @JavascriptInterface public void speak(String text, String lang) { runOnUiThread(() -> speakNative(text, lang)); }
         @JavascriptInterface public void cancel() { runOnUiThread(() -> { if (neuralTts != null) neuralTts.cancel(); if (tts != null) tts.stop(); }); }
-        @JavascriptInterface public boolean isReady() { return ttsReady; }
+        @JavascriptInterface public boolean isReady() { return ttsReady; }\n        @JavascriptInterface public String modeLabel() { return offlineMode ? "📴 OFFLINE" : "🌐 ONLINE"; }\n        @JavascriptInterface public void toggleMode() { runOnUiThread(() -> { offlineMode = !offlineMode; if (!offlineMode && !isOnline()) { offlineMode = true; Toast.makeText(MainActivity.this, "Không có Internet — vẫn ở OFFLINE", Toast.LENGTH_SHORT).show(); } getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OFFLINE, offlineMode).apply(); loadSelectedMode(); }); }
         @JavascriptInterface public boolean hasEnglish() { return true; }
         @JavascriptInterface public boolean hasChinese() { return true; }
         @JavascriptInterface public void installVoices() { }
