@@ -187,9 +187,10 @@ public class MainActivity extends Activity {
                 injectMobilePatch();
                 injectNativeVoiceHook();
                 injectModeControl();
+                injectModeControl();
             }
 
-            @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {\n                String scheme = req.getUrl().getScheme();\n                if (offlineMode && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {\n                    return new android.webkit.WebResourceResponse("text/plain", "UTF-8", new java.io.ByteArrayInputStream(new byte[0]));\n                }\n                return super.shouldInterceptRequest(view, req);\n            }\n\n            @Override public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
+            @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {\n                String scheme = req.getUrl().getScheme();\n                if (offlineMode && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {\n                    return new android.webkit.WebResourceResponse("text/plain", "UTF-8", new java.io.ByteArrayInputStream(new byte[0]));\n                }\n                return super.shouldInterceptRequest(view, req);\n            }\n\n            @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {\n                String scheme = req.getUrl().getScheme();\n                if (offlineMode && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {\n                    return new android.webkit.WebResourceResponse("text/plain", "UTF-8", new java.io.ByteArrayInputStream(new byte[0]));\n                }\n                return super.shouldInterceptRequest(view, req);\n            }\n\n            @Override public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
                 if (req.isForMainFrame() && !offlineMode && !view.getUrl().startsWith("file:///android_asset/")) {
                     Toast.makeText(MainActivity.this, "Mất mạng — chuyển sang trang offline", Toast.LENGTH_SHORT).show();
                     offlineMode = true;
@@ -238,7 +239,19 @@ public class MainActivity extends Activity {
     public class NativeVoiceBridge {
         @JavascriptInterface public void speak(String text, String lang) { runOnUiThread(() -> speakNative(text, lang)); }
         @JavascriptInterface public void cancel() { runOnUiThread(() -> { if (neuralTts != null) neuralTts.cancel(); if (tts != null) tts.stop(); }); }
-        @JavascriptInterface public boolean isReady() { return ttsReady; }\n        @JavascriptInterface public String modeLabel() { return offlineMode ? "📴 OFFLINE" : "🌐 ONLINE"; }\n        @JavascriptInterface public void toggleMode() { runOnUiThread(() -> { offlineMode = !offlineMode; if (!offlineMode && !isOnline()) { offlineMode = true; Toast.makeText(MainActivity.this, "Không có Internet — vẫn ở OFFLINE", Toast.LENGTH_SHORT).show(); } getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OFFLINE, offlineMode).apply(); loadSelectedMode(); }); }
+        @JavascriptInterface public boolean isReady() { return ttsReady; }
+        @JavascriptInterface public boolean isOffline() { return offlineMode; }
+        @JavascriptInterface public String modeLabel() { return offlineMode ? "📴 OFFLINE" : "🌐 ONLINE"; }
+        @JavascriptInterface public void toggleMode() { runOnUiThread(() -> { offlineMode = !offlineMode; if (!offlineMode && !isOnline()) { offlineMode = true; Toast.makeText(MainActivity.this, "Không có Internet — vẫn ở OFFLINE", Toast.LENGTH_SHORT).show(); } getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OFFLINE, offlineMode).apply(); loadSelectedMode(); }); }
+        @JavascriptInterface public String readAssetText(String relativePath) {
+            if (relativePath == null || relativePath.length() > 180 || relativePath.contains("..") || relativePath.startsWith("/") || !relativePath.startsWith("vendor/hanzi-writer-data/")) return null;
+            try (java.io.InputStream in = getAssets().open("www/" + relativePath);
+                 java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream()) {
+                byte[] buffer = new byte[8192]; int n;
+                while ((n = in.read(buffer)) > 0) { out.write(buffer, 0, n); if (out.size() > 512 * 1024) return null; }
+                return out.toString("UTF-8");
+            } catch (Exception e) { return null; }
+        }\n        @JavascriptInterface public String modeLabel() { return offlineMode ? "📴 OFFLINE" : "🌐 ONLINE"; }\n        @JavascriptInterface public void toggleMode() { runOnUiThread(() -> { offlineMode = !offlineMode; if (!offlineMode && !isOnline()) { offlineMode = true; Toast.makeText(MainActivity.this, "Không có Internet — vẫn ở OFFLINE", Toast.LENGTH_SHORT).show(); } getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OFFLINE, offlineMode).apply(); loadSelectedMode(); }); }
         @JavascriptInterface public boolean hasEnglish() { return true; }
         @JavascriptInterface public boolean hasChinese() { return true; }
         @JavascriptInterface public void installVoices() { }
