@@ -131,6 +131,22 @@ public class MainActivity extends Activity {
                 injectModeControl();
             }
 
+            @Override public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                if (Build.VERSION.SDK_INT >= 26 && view == webView) {
+                    runOnUiThread(() -> {
+                        try { root.removeView(webView); webView.destroy(); } catch (Exception ignored) {}
+                        webView = new WebView(MainActivity.this);
+                        root.addView(webView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                        applySystemBarInsets();
+                        configureWebView();
+                        loadSelectedMode();
+                        Toast.makeText(MainActivity.this, "Đã khôi phục màn hình học sau lỗi bộ hiển thị.", Toast.LENGTH_LONG).show();
+                    });
+                    return true;
+                }
+                return Build.VERSION.SDK_INT >= 26;
+            }
+
             @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
                 String scheme = req.getUrl().getScheme();
                 if (offlineMode && ("http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme))) {
