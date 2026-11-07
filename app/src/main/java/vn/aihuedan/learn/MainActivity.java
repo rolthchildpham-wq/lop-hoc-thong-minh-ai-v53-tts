@@ -203,7 +203,7 @@ public class MainActivity extends Activity {
 
 
     private void injectModeControl() {
-        String js = "(function(){var host=document.querySelector('.header-actions');if(!host)return;var b=document.getElementById('nativeModeToggle');if(!b){b=document.createElement('button');b.id='nativeModeToggle';b.type='button';b.className='action-top-btn';b.style.cssText='white-space:nowrap;flex-shrink:0;border:1px solid #ffd166;background:#172033;color:#ffd166;font-weight:900;padding:5px 7px;border-radius:8px;';b.onclick=function(){try{AndroidVoice.toggleMode();}catch(e){}};host.appendChild(b);}b.textContent=AndroidVoice.modeLabel();})();";
+        String js = "(function(){var host=document.querySelector('.header-actions');if(!host)return;var b=document.getElementById('nativeModeToggle');if(!b){b=document.createElement('button');b.id='nativeModeToggle';b.type='button';b.className='action-top-btn';host.style.cssText='display:flex;gap:3px;max-width:62vw;overflow-x:auto;overflow-y:hidden;flex-shrink:0;';b.style.cssText='white-space:nowrap;flex-shrink:0;border:1px solid #ffd166;background:#172033;color:#ffd166;font-weight:900;padding:4px 6px;border-radius:8px;font-size:9px;';b.onclick=function(){try{AndroidVoice.toggleMode();}catch(e){}};host.appendChild(b);}b.textContent=AndroidVoice.modeLabel();})();";
         webView.evaluateJavascript(js, null);
     }
 
