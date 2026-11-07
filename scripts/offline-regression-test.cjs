@@ -4,10 +4,10 @@ const htmlPath = 'app/src/main/assets/www/index.html';
 const html = fs.readFileSync(htmlPath, 'utf8');
 const assert = (ok, msg) => { if (!ok) throw new Error(msg); };
 assert(html.length > 500000, 'Offline HTML missing/truncated');
-const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
 let checked = 0;
 for (const [_, attrs, code] of scripts) {
-  if (/application\\/(ld\\+json|json)|importmap/i.test(attrs)) continue;
+  if (/application\/(ld\+json|json)|importmap/i.test(attrs)) continue;
   if (!code.trim()) continue;
   new vm.Script(code, { filename: 'inline-script-' + checked + '.js' });
   checked++;
