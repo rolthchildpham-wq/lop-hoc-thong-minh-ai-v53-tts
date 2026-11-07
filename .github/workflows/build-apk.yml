@@ -69,9 +69,7 @@ jobs:
           test -s app/src/main/assets/tts/en/en_US-lessac-medium.onnx
           test -s app/src/main/assets/tts/en/tokens.txt
           # Piper requires the English pronunciation lexicon as a separate release asset.
-          curl --fail --location --retry 4 --retry-all-errors \\
-            https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/lexicon-en-us.txt \\
-            --output app/src/main/assets/tts/en/lexicon.txt
+          curl --fail --location --retry 4 --retry-all-errors https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/lexicon-en-us.txt --output app/src/main/assets/tts/en/lexicon.txt
           test -s app/src/main/assets/tts/en/lexicon.txt
           ls -lh app/src/main/assets/tts/en/en_US-lessac-medium.onnx
 
