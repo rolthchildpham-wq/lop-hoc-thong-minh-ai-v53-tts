@@ -276,7 +276,7 @@ public class MainActivity extends Activity {
     private boolean isMemorySafeForKokoro() {
         try {
             ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
-            if (am == null || am.isLowRamDevice() || am.getMemoryClass() < 384) return false;
+            if (am == null || am.isLowRamDevice() || am.getLargeMemoryClass() < 384) return false;
             ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
             am.getMemoryInfo(info);
             return info.totalMem >= 6L * 1024L * 1024L * 1024L;
