@@ -1,4 +1,4 @@
-name: Build Android V5.3.3 Offline TTS APK
+name: Build Android V5.3.4 Full Offline TTS APK
 
 on:
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
       - name: Checkout V5.3.3 source
         uses: actions/checkout@v4
 
-      - name: Set up Java 17
+      - name: Bundle complete local HTML app\n        shell: bash\n        run: |\n          set -euxo pipefail\n          mkdir -p app/src/main/assets/www\n          cp index.html app/src/main/assets/www/index.html\n          test -s app/src/main/assets/www/index.html\n          grep -q "offline-local-runtime" app/src/main/assets/www/index.html\n\n      - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -102,7 +102,7 @@ jobs:
           test -s app/src/main/assets/tts/zh/model.onnx
           test -s app/src/main/assets/tts/zh/voices.bin
 
-      - name: Build V5.3.3 debug APK
+      - name: Build V5.3.4 debug APK
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Verify APK and bundled model names
@@ -118,7 +118,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Lop-Hoc-Thong-Minh-AI-V5.3.3-CN-EN-OFFLINE-APK
+          name: Lop-Hoc-Thong-Minh-AI-V5.3.4-FULL-OFFLINE-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           compression-level: 0
