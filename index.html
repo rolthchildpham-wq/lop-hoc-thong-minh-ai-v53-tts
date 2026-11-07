@@ -3046,8 +3046,8 @@ document.addEventListener('DOMContentLoaded',function(){
     if(saved.mode&&modes.includes(saved.mode))appMode=saved.mode;
     if(saved.sub&&typeof normalizeLearningSub==='function')currentSubCategory=normalizeLearningSub(appMode,saved.sub);
     if(Number.isFinite(Number(saved.questionIndex)))questionIndex=Math.max(0,Number(saved.questionIndex));
-    if(typeof englishDeckState!=='undefined'&&saved.englishDeck)englishDeckState=saved.englishDeck;
-    if(typeof grade5DeckState!=='undefined'&&saved.grade5Deck)grade5DeckState=saved.grade5Deck;
+    if(typeof englishDeckState!=='undefined'&&saved.englishDeck)Object.assign(englishDeckState,saved.englishDeck);
+    if(typeof grade5DeckState!=='undefined'&&saved.grade5Deck)Object.assign(grade5DeckState,saved.grade5Deck);
     if(typeof STUDENTS!=='undefined'&&STUDENTS[0]){
       STUDENTS[0].name=name;
       STUDENTS[0].score=Number(saved.score??profile.score)||0;
