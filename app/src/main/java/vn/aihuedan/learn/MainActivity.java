@@ -40,7 +40,10 @@ public class MainActivity extends Activity {
 
     private FrameLayout root;
     private WebView webView;
-    private PermissionRequest pendingWebPermission;\n    private boolean offlineMode = true;\n    private static final String PREFS = "app_mode";\n    private static final String KEY_OFFLINE = "offline";
+    private PermissionRequest pendingWebPermission;
+    private boolean offlineMode = true;
+    private static final String PREFS = "app_mode";
+    private static final String KEY_OFFLINE = "offline";
     private TextToSpeech tts;
     private volatile boolean ttsReady = false;
     private NeuralTtsManager neuralTts;
@@ -68,7 +71,8 @@ public class MainActivity extends Activity {
         initTts();
         configureWebView();
 
-        offlineMode = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_OFFLINE, true);\n        loadSelectedMode();
+        offlineMode = getSharedPreferences(PREFS, MODE_PRIVATE).getBoolean(KEY_OFFLINE, true);
+        loadSelectedMode();
     }
 
     private void applySystemBarInsets() {
@@ -123,7 +127,8 @@ public class MainActivity extends Activity {
 
             @Override public void onPageFinished(WebView view, String url) {
                 injectMobilePatch();
-                injectNativeVoiceHook();\n                injectModeControl();
+                injectNativeVoiceHook();
+                injectModeControl();
             }
 
             @Override public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
@@ -137,7 +142,9 @@ public class MainActivity extends Activity {
             @Override public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
                 if (req.isForMainFrame() && !offlineMode && !OFFLINE_URL.equals(view.getUrl())) {
                     Toast.makeText(MainActivity.this, "Mất mạng — chuyển sang trang offline", Toast.LENGTH_SHORT).show();
-                    offlineMode = true;\n                    getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OFFLINE, true).apply();\n                    view.loadUrl(OFFLINE_URL);
+                    offlineMode = true;
+                    getSharedPreferences(PREFS, MODE_PRIVATE).edit().putBoolean(KEY_OFFLINE, true).apply();
+                    view.loadUrl(OFFLINE_URL);
                 }
             }
         });
