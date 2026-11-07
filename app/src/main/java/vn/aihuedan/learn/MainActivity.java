@@ -2,6 +2,7 @@ package vn.aihuedan.learn;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.os.Bundle;
 import android.content.Context;
 import android.content.Intent;
@@ -257,7 +258,11 @@ public class MainActivity extends Activity {
 
         String l = lang == null ? "vi-VN" : lang.toLowerCase(Locale.ROOT);
 
-        if (neuralTts != null && neuralTts.supports(l)) {
+        // Kokoro Chinese is a large model (~325 MB on disk). On phones with limited
+        // RAM, use the installed offline Android voice instead of risking process death.
+        boolean allowNeural = neuralTts != null && neuralTts.supports(l);
+        if (l.startsWith("zh") && !isMemorySafeForKokoro()) allowNeural = false;
+        if (allowNeural) {
             neuralTts.speak(text, l,
                     () -> { },
                     () -> runOnUiThread(() -> speakSystemFallback(text, l)));
@@ -265,6 +270,22 @@ public class MainActivity extends Activity {
         }
 
         speakSystemFallback(text, l);
+    }
+
+
+    private boolean isMemorySafeForKokoro() {
+        try {
+            ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            if (am == null || am.isLowRamDevice() || am.getMemoryClass() < 384) return false;
+            ActivityManager.MemoryInfo info = new ActivityManager.MemoryInfo();
+            am.getMemoryInfo(info);
+            return info.totalMem >= 6L * 1024L * 1024L * 1024L;
+        } catch (Throwable ignored) { return false; }
+    }
+
+    @Override public void onTrimMemory(int level) {
+        super.onTrimMemory(level);
+        if (level >= TRIM_MEMORY_RUNNING_LOW && neuralTts != null) neuralTts.trimMemory();
     }
 
     private void speakSystemFallback(String text, String lang) {
