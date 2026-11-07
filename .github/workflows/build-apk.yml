@@ -1,4 +1,4 @@
-name: Build Android V5.3.5 Complete Offline TTS APK
+name: Build Android V5.3.6 Complete Offline TTS APK
 
 on:
   workflow_dispatch:
@@ -125,7 +125,7 @@ jobs:
           test -s app/src/main/assets/tts/zh/model.onnx
           test -s app/src/main/assets/tts/zh/voices.bin
 
-      - name: Build V5.3.5 debug APK
+      - name: Build V5.3.6 debug APK
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Verify APK and bundled model names
@@ -141,7 +141,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Lop-Hoc-Thong-Minh-AI-V5.3.5-COMPLETE-OFFLINE-APK
+          name: Lop-Hoc-Thong-Minh-AI-V5.3.6-COMPLETE-OFFLINE-APK
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           compression-level: 0
