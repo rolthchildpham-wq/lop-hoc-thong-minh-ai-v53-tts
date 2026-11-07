@@ -2855,6 +2855,17 @@ function virtualHsk(vocab,level){return new Proxy([],{get(t,p){if(p==='length')r
 async function loadHskLevel(level){level=Number(level);let raw=await cacheGet('old-'+level);if(!raw){const bubble=document.getElementById('teacherBubble');if(bubble)bubble.innerHTML=`⏳ Đang nạp ngân hàng HSK ${level} đầy đủ…`;const r=await fetch(HSK_URL(level),{cache:'force-cache'});if(!r.ok)throw new Error('HSK dataset HTTP '+r.status);raw=await r.json();cacheSet('old-'+level,raw)}const vocab=raw.map(hskWord).filter(x=>x.hanzi&&x.pinyin);const proxy=virtualHsk(vocab,level);DATA_BANK.chinese_hsk[level]=proxy;window.HSK_FULL_VOCAB=window.HSK_FULL_VOCAB||{};window.HSK_FULL_VOCAB[level]=vocab;return proxy;}
 window.HSKFull52={loadLevel,counts:HSK_COUNTS,activityTypes:HSK_TYPES,source:'complete-hsk-vocabulary (MIT/CC-CEDICT definitions)'};
 
+// ---------- Offline mode isolation: never depend on Firebase/remote HSK fetch ----------
+(function(){
+  const offline=()=>{try{return !!(window.AndroidVoice&&AndroidVoice.isOffline())}catch(e){return false}};
+  if(offline()){
+    try{
+      fbRole=''; fbUid=''; fbRoomCode=''; fbRoomRef=null; fbHostStarted=false;
+      isHost=false; isSolo=true;
+      if(typeof clearRoomSession==='function')clearRoomSession();
+    }catch(e){}
+  }
+})();
 // ---------- Global progression guard: advance, never loop ----------
 const oldLoadQuestion=window.loadQuestion;
 window.loadQuestion=function(){
@@ -2874,7 +2885,13 @@ window.loadQuestion=function(){
 const oldSetAppMode=window.setAppMode;
 window.setAppMode=function(mode,sub,source='system'){
  const r=oldSetAppMode(mode,sub,source);
- if(mode==='chinese_hsk'){const lv=Number(currentSubCategory)||1;loadHskLevel(lv).then(()=>{questionIndex=0;window.loadQuestion();}).catch(e=>{console.warn('HSK full bank fallback',e);teacherSpeak('Chưa tải được ngân hàng HSK đầy đủ, cô dùng ngân hàng lõi hiện có.');});}
+ // HSK full remote vocabulary is optional online enhancement. Offline mode
+ // must use the bundled HSK core bank without attempting blocked network fetches.
+ if(mode==='chinese_hsk' && !(window.AndroidVoice&&AndroidVoice.isOffline())){
+   const lv=Number(currentSubCategory)||1;
+   loadHskLevel(lv).then(()=>{questionIndex=0;window.loadQuestion();})
+     .catch(e=>{console.warn('HSK full bank fallback',e);teacherSpeak('Cô đang dùng ngân hàng HSK có sẵn trong máy.');});
+ }
  return r;
 };
 
